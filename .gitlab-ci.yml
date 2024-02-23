@@ -1,0 +1,41 @@
+stages:
+  - build
+  - test
+  - deploy
+
+build_job:
+  stage: build
+  script:
+    - echo "Building the project..."
+    # Add commands to build your project here
+
+test_job:
+  stage: test
+  script:
+    - echo "Running tests..."
+    # Add commands to test your project here
+
+deploy_job:
+  stage: deploy
+  script:
+    - echo "Deploying to Kubernetes..."
+    - echo "Deploying application..."
+    - kubectl apply -f deployments/prod/
+  environment:
+    name: production
+  only:
+    - main
+
+  before_script:
+    - 'which ssh-agent || ( apt-get update -y && apt-get install openssh-client -y )'
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - ssh-keyscan -H '$SSH_SERVER' >> ~/.ssh/known_hosts
+    - chmod 644 ~/.ssh/known_hosts
+    - git clone $INFRA_REPO
+    - cd $INFRA_REPO_DIR
+    - git checkout $INFRA_BRANCH
+    - git pull origin $INFRA_BRANCH
+    - kubectl apply -f k8s/
